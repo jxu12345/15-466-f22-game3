@@ -7,6 +7,9 @@
 
 #include <vector>
 #include <deque>
+#include <random> // for std::mt19937
+#include <chrono> // for std::chrono
+
 
 struct PlayMode : Mode {
 	PlayMode();
@@ -34,7 +37,6 @@ struct PlayMode : Mode {
 
 	// locks and their rotations
 	std::vector<Scene::Transform *> lock = {nullptr, nullptr, nullptr, nullptr, nullptr};
-	std::vector<glm::quat> lock_rotation = {glm::quat(), glm::quat(), glm::quat(), glm::quat(), glm::quat()};
 
 	// lock code and current code
 	// accessed through getter and setter functions
@@ -42,9 +44,36 @@ struct PlayMode : Mode {
 	std::vector<uint8_t> current_code = {0, 0, 0, 0, 0};
 	uint8_t curr_lock = 0;
 
-	void check_locks();
+	// lock checking
+	bool lock_correct (uint8_t lock_num) {
+		return lock_code[lock_num] == current_code[lock_num];
+	}
 
-	void clkwise_turn (uint8_t lock_num) {
+	bool lock_solved () {
+		for (uint8_t i = 0; i < 5; i++) {
+			if (!lock_correct(i)) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	// lock reset to random code and 0 user input
+	void reset_locks() {
+		// seed for random generator
+		// random generator code from https://www.learncpp.com/cpp-tutorial/generating-random-numbers-using-mersenne-twister/
+		std::mt19937 mt{ static_cast<unsigned int>(
+			std::chrono::steady_clock::now().time_since_epoch().count()
+		) };	
+		for (uint8_t i = 0; i < 5; i++) {
+			lock_code[i] = mt() % 10;
+			assert(lock_code[i] < 10);
+			current_code[i] = 0;
+		}
+	}
+
+	// turn lock clockwise and counterclockwise
+	void left_turn (uint8_t lock_num) { //counterclockwise, increment by 1
 		if (lock_code[lock_num] == 9) {
 			lock_code[lock_num] = 0;
 		} else {
@@ -52,7 +81,7 @@ struct PlayMode : Mode {
 		}
 	}
 
-	void counter_clkwise_turn (uint8_t lock_num) {
+	void right_turn (uint8_t lock_num) { //clockwise, decrement by 1
 		if (lock_code[lock_num] == 0) {
 			lock_code[lock_num] = 9;
 		} else {
@@ -63,6 +92,8 @@ struct PlayMode : Mode {
 	
 	//music coming from the tip of the leg (as a demonstration):
 	std::shared_ptr< Sound::PlayingSample > leg_tip_loop;
+
+	// lock turning and unlocking sounds
 	
 	//camera:
 	Scene::Camera *camera = nullptr;

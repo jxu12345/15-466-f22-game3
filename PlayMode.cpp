@@ -16,6 +16,14 @@ Load< Sound::Sample > dusty_floor_sample(LoadTagDefault, []() -> Sound::Sample c
 	return new Sound::Sample(data_path("dusty-floor.opus"));
 });
 
+// load lock turning and opening sound
+Load< Sound::Sample > lock_turn_sample(LoadTagDefault, []() -> Sound::Sample const * {
+	return new Sound::Sample(data_path("lock_turn.wav"));
+});
+Load< Sound::Sample > lock_open_sample(LoadTagDefault, []() -> Sound::Sample const * {
+	return new Sound::Sample(data_path("lock_open.wav"));
+});
+
 GLuint lock_meshes_for_lit_color_texture_program = 0;
 Load< MeshBuffer > lock_meshes(LoadTagDefault, []() -> MeshBuffer const * {
 	MeshBuffer const *ret = new MeshBuffer(data_path("lock.pnct"));
@@ -50,13 +58,9 @@ PlayMode::PlayMode() : scene(*lock_scene) {
 		if (transform.name == "Lock Module 4") lock[3] = &transform;
 		if (transform.name == "Lock Module 5") lock[4] = &transform;
 	}
-	// for (auto lock_transform : lock ) {
-		// if (lock_transform == nullptr) throw std::runtime_error("A Lock not found.");
-	// }
-
-	// for (uint32_t i = 0; i < 5; ++i) {
-	// 	lock_rotation[i] = lock[i]->rotation;
-	// }
+	for (auto lock_transform : lock ) {
+		if (lock_transform == nullptr) throw std::runtime_error("A Lock not found.");
+	}
 
 	//get pointer to camera for convenience:
 	if (scene.cameras.size() != 1) throw std::runtime_error("Expecting scene to have exactly one camera, but it has " + std::to_string(scene.cameras.size()));
@@ -64,7 +68,10 @@ PlayMode::PlayMode() : scene(*lock_scene) {
 
 	//start music loop playing:
 	// (note: position will be over-ridden in update())
-	leg_tip_loop = Sound::loop_3D(*dusty_floor_sample, 1.0f, glm::vec3(0), 10.0f);
+	// leg_tip_loop = Sound::loop_3D(*dusty_floor_sample, 1.0f, glm::vec3(0), 10.0f);
+
+	// reset lock codes
+	reset_locks();
 }
 
 
@@ -209,12 +216,30 @@ void PlayMode::update(float elapsed) {
 	// leg_tip_loop->set_position(get_leg_tip_position(), 1.0f / 60.0f);
 
 	// update movement if no movement in progress
-	static uint8_t iters = 0;
+	static uint8_t lock_anim_iters = 0;
+	static uint8_t lock_solved_iters = 0;
+
 	static auto curr_rotation = glm::angleAxis(0.0f, glm::vec3(0.0f, 1.0f, 0.0f));
 	constexpr float one_tenth_rotation = glm::radians(36.0f) / 5.0f;
 
-	if (iters > 0) {
-		iters--;
+	// play sound in middle of animation 
+	if (lock_anim_iters == 10) {
+		for (uint8_t i = 0; i < 5; i++) {
+			if (i >= curr_lock) {
+				Sound::play_3D(
+					*lock_turn_sample, 
+					1.0f, 
+					lock[i]-> make_local_to_world() * glm::vec4(lock[i]->position, 1.0f),
+					3.0f
+				);
+			}
+			
+		}
+		// Sound::play(*lock_turn_sample, 1.0f, 0.0f);
+	}
+
+	if (lock_anim_iters > 0) {
+		lock_anim_iters--;
 		lock[curr_lock]->rotation = curr_rotation * lock[curr_lock]->rotation;
 	}
 	
@@ -243,11 +268,11 @@ void PlayMode::update(float elapsed) {
 		// record moves
 		if (arrowLeft.pressed) {
 			curr_rotation = glm::angleAxis(one_tenth_rotation / 2, glm::vec3(1.0f, 0.0f, 0.0f));
-			iters = 10;
+			lock_anim_iters = 20;
 		}
 		if (arrowRight.pressed) {
 			curr_rotation = glm::angleAxis(-one_tenth_rotation / 2, glm::vec3(1.0f, 0.0f, 0.0f));
-			iters = 10;
+			lock_anim_iters = 20;
 		}
 	}
 
