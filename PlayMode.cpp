@@ -78,7 +78,8 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 		if (evt.key.keysym.sym == SDLK_ESCAPE) {
 			SDL_SetRelativeMouseMode(SDL_FALSE);
 			return true;
-		} else if (evt.key.keysym.sym == SDLK_a) {
+		} 
+		else if (evt.key.keysym.sym == SDLK_a) {
 			left.downs += 1;
 			left.pressed = true;
 			return true;
@@ -95,18 +96,88 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 			down.pressed = true;
 			return true;
 		}
+		else if (evt.key.keysym.sym == SDLK_LEFT) {
+			arrowLeft.downs += 1;
+			arrowLeft.pressed = true;
+			return true;
+		} 
+		else if (evt.key.keysym.sym == SDLK_RIGHT) {
+			arrowRight.downs += 1;
+			arrowRight.pressed = true;
+			return true;
+		} 
+		else if (evt.key.keysym.sym == SDLK_1) {
+			k1.downs += 1;
+			k1.pressed = true;
+		}
+		else if (evt.key.keysym.sym == SDLK_2) {
+			k2.downs += 1;
+			k2.pressed = true;
+		}
+		else if (evt.key.keysym.sym == SDLK_3) {
+			k3.downs += 1;
+			k3.pressed = true;
+		}
+		else if (evt.key.keysym.sym == SDLK_4) {
+			k4.downs += 1;
+			k4.pressed = true;
+		}
+		else if (evt.key.keysym.sym == SDLK_5) {
+			k5.downs += 1;
+			k5.pressed = true;
+		}
+
 	} else if (evt.type == SDL_KEYUP) {
 		if (evt.key.keysym.sym == SDLK_a) {
 			left.pressed = false;
+			left.released = true;
 			return true;
 		} else if (evt.key.keysym.sym == SDLK_d) {
 			right.pressed = false;
+			right.released = true;
 			return true;
 		} else if (evt.key.keysym.sym == SDLK_w) {
 			up.pressed = false;
+			up.released = true;
 			return true;
 		} else if (evt.key.keysym.sym == SDLK_s) {
 			down.pressed = false;
+			down.released = true;
+			return true;
+		}
+		else if (evt.key.keysym.sym == SDLK_LEFT) {
+			arrowLeft.pressed = false;
+			arrowLeft.released = true;
+			return true;
+		} 
+		else if (evt.key.keysym.sym == SDLK_RIGHT) {
+			arrowRight.pressed = false;
+			arrowRight.released = true;
+			return true;
+		} 
+		else if (evt.key.keysym.sym == SDLK_1) {
+			k1.pressed = false;
+			k1.released = true;
+			return true;
+		}
+		else if (evt.key.keysym.sym == SDLK_2) {
+			k2.pressed = false;
+			k2.released = true;
+			return true;
+		}
+		else if (evt.key.keysym.sym == SDLK_3) {
+			k3.pressed = false;
+			k3.released = true;
+			return true;
+		}
+		else if (evt.key.keysym.sym == SDLK_4) {
+			k4.pressed = false;
+			k4.released = true;
+			return true;
+		}
+		else if (evt.key.keysym.sym == SDLK_5) {
+			k5.pressed = false;
+			k5.released = true;
 			return true;
 		}
 	} else if (evt.type == SDL_MOUSEBUTTONDOWN) {
@@ -136,6 +207,51 @@ void PlayMode::update(float elapsed) {
 
 	//move sound to follow leg tip position:
 	// leg_tip_loop->set_position(get_leg_tip_position(), 1.0f / 60.0f);
+
+	// update movement if no movement in progress
+	static uint8_t iters = 0;
+	static auto curr_rotation = glm::angleAxis(0.0f, glm::vec3(0.0f, 1.0f, 0.0f));
+	constexpr float one_tenth_rotation = glm::radians(36.0f) / 5.0f;
+
+	if (iters > 0) {
+		iters--;
+		lock[curr_lock]->rotation = curr_rotation * lock[curr_lock]->rotation;
+	}
+	
+	else {
+		// switch locks
+		if (k1.released) {
+			k1.released = false;
+			curr_lock = 0;
+		}
+		else if (k2.released) {
+			k2.released = false;
+			curr_lock = 1;
+		}
+		else if (k3.released) {
+			k3.released = false;
+			curr_lock = 2;
+		}
+		else if (k4.released) {
+			k4.released = false;
+			curr_lock = 3;
+		}
+		else if (k5.released) {
+			k5.released = false;
+			curr_lock = 4;
+		}
+		// record moves
+		if (arrowLeft.pressed) {
+			curr_rotation = glm::angleAxis(one_tenth_rotation / 2, glm::vec3(1.0f, 0.0f, 0.0f));
+			iters = 10;
+		}
+		if (arrowRight.pressed) {
+			curr_rotation = glm::angleAxis(-one_tenth_rotation / 2, glm::vec3(1.0f, 0.0f, 0.0f));
+			iters = 10;
+		}
+	}
+
+
 
 	//move camera:
 	{
@@ -171,6 +287,13 @@ void PlayMode::update(float elapsed) {
 	right.downs = 0;
 	up.downs = 0;
 	down.downs = 0;
+	arrowLeft.downs = 0;
+	arrowRight.downs = 0;
+	k1.downs = 0;
+	k2.downs = 0;
+	k3.downs = 0;
+	k4.downs = 0;
+	k5.downs = 0;
 }
 
 void PlayMode::draw(glm::uvec2 const &drawable_size) {
