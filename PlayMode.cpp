@@ -11,6 +11,7 @@
 #include <glm/gtc/type_ptr.hpp>
 
 #include <random>
+#include <iostream>
 
 Load< Sound::Sample > dusty_floor_sample(LoadTagDefault, []() -> Sound::Sample const * {
 	return new Sound::Sample(data_path("dusty-floor.opus"));
@@ -224,18 +225,23 @@ void PlayMode::update(float elapsed) {
 
 	// play sound in middle of animation 
 	if (lock_anim_iters == 10) {
+		// print current lock codes and correct ones
+		std::cout << "Current lock codes: " << std::to_string(current_code[0]) << std::to_string(current_code[1]) << std::to_string(current_code[2]) << std::to_string(current_code[3]) << std::to_string(current_code[4]) << std::endl;
+		std::cout << "Correct lock codes: " << std::to_string(lock_code[0]) << std::to_string(lock_code[1]) << std::to_string(lock_code[2]) << std::to_string(lock_code[3]) << std::to_string(lock_code[4]) << std::endl;
 		for (uint8_t i = 0; i < 5; i++) {
 			if (i >= curr_lock) {
+				// TODO check if lock code is correct
+				bool correct = lock_correct(i);
+
 				Sound::play_3D(
-					*lock_turn_sample, 
-					1.0f, 
+					*(correct ? lock_open_sample : lock_turn_sample), 
+					1.0f - 0.5f * (!correct), 
 					lock[i]-> make_local_to_world() * glm::vec4(lock[i]->position, 1.0f),
-					3.0f
+					2.0f
 				);
 			}
 			
 		}
-		// Sound::play(*lock_turn_sample, 1.0f, 0.0f);
 	}
 
 	if (lock_anim_iters > 0) {
@@ -244,6 +250,7 @@ void PlayMode::update(float elapsed) {
 	}
 	
 	else {
+		// check if lock is already solved TODO
 		// switch locks
 		if (k1.released) {
 			k1.released = false;
@@ -265,13 +272,15 @@ void PlayMode::update(float elapsed) {
 			k5.released = false;
 			curr_lock = 4;
 		}
-		// record moves
+		// record moves and start rotation animation
 		if (arrowLeft.pressed) {
 			curr_rotation = glm::angleAxis(one_tenth_rotation / 2, glm::vec3(1.0f, 0.0f, 0.0f));
+			left_turn(curr_lock);
 			lock_anim_iters = 20;
 		}
 		if (arrowRight.pressed) {
 			curr_rotation = glm::angleAxis(-one_tenth_rotation / 2, glm::vec3(1.0f, 0.0f, 0.0f));
+			right_turn(curr_lock);
 			lock_anim_iters = 20;
 		}
 	}
@@ -280,9 +289,8 @@ void PlayMode::update(float elapsed) {
 
 	//move camera:
 	{
-
 		//combine inputs into a move:
-		constexpr float PlayerSpeed = 30.0f;
+		constexpr float PlayerSpeed = 15.0f;
 		glm::vec2 move = glm::vec2(0.0f);
 		if (left.pressed && !right.pressed) move.x =-1.0f;
 		if (!left.pressed && right.pressed) move.x = 1.0f;
