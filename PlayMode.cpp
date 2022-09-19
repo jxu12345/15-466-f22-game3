@@ -14,12 +14,15 @@ Load< Sound::Sample > dusty_floor_sample(LoadTagDefault, []() -> Sound::Sample c
 	return new Sound::Sample(data_path("dusty-floor.opus"));
 });
 
-// load lock turning and opening sound
+// load lock turning, opening and completion sound
 Load< Sound::Sample > lock_turn_sample(LoadTagDefault, []() -> Sound::Sample const * {
 	return new Sound::Sample(data_path("lock_turn.wav"));
 });
 Load< Sound::Sample > lock_open_sample(LoadTagDefault, []() -> Sound::Sample const * {
 	return new Sound::Sample(data_path("lock_open.wav"));
+});
+Load< Sound::Sample > lock_solved_sample(LoadTagDefault, []() -> Sound::Sample const * {
+	return new Sound::Sample(data_path("lock_solved.wav"));
 });
 
 GLuint lock_meshes_for_lit_color_texture_program = 0;
@@ -257,7 +260,9 @@ void PlayMode::update(float elapsed) {
 			reset_locks();
 		}
 		// check if lock is already solved
+		static bool lock_solved_sound_played = false;
 		if (!lock_solved()) {
+			lock_solved_sound_played = false;
 			// switch locks
 			if (k1.released) {
 				k1.released = false;
@@ -291,7 +296,14 @@ void PlayMode::update(float elapsed) {
 				lock_anim_iters = 20;
 			}
 		}
-		
+		else if (!lock_solved_sound_played) {
+			lock_solved_sound_played = true;
+			Sound::play(
+				*(lock_solved_sample),
+				1.0f,
+				0.0f
+			);
+		}
 	}
 
 	//move camera:
