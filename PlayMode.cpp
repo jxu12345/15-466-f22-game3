@@ -10,9 +10,6 @@
 
 #include <glm/gtc/type_ptr.hpp>
 
-#include <random>
-#include <iostream>
-
 Load< Sound::Sample > dusty_floor_sample(LoadTagDefault, []() -> Sound::Sample const * {
 	return new Sound::Sample(data_path("dusty-floor.opus"));
 });
@@ -188,6 +185,11 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 			k5.released = true;
 			return true;
 		}
+		else if (evt.key.keysym.sym == SDLK_SPACE) {
+			space.pressed = false;
+			space.released = true;
+			return true;
+		}
 	} else if (evt.type == SDL_MOUSEBUTTONDOWN) {
 		if (SDL_GetRelativeMouseMode() == SDL_FALSE) {
 			SDL_SetRelativeMouseMode(SDL_TRUE);
@@ -221,13 +223,12 @@ void PlayMode::update(float elapsed) {
 	static uint8_t lock_solved_iters = 0;
 
 	static auto curr_rotation = glm::angleAxis(0.0f, glm::vec3(0.0f, 1.0f, 0.0f));
-	constexpr float one_tenth_rotation = glm::radians(36.0f) / 5.0f;
+	constexpr float one_tenth_rotation = glm::radians(36.0f) / 10.0f;
 
 	// play sound in middle of animation 
 	if (lock_anim_iters == 10) {
 		// print current lock codes and correct ones
 		std::cout << "Current lock codes: " << std::to_string(current_code[0]) << std::to_string(current_code[1]) << std::to_string(current_code[2]) << std::to_string(current_code[3]) << std::to_string(current_code[4]) << std::endl;
-		std::cout << "Correct lock codes: " << std::to_string(lock_code[0]) << std::to_string(lock_code[1]) << std::to_string(lock_code[2]) << std::to_string(lock_code[3]) << std::to_string(lock_code[4]) << std::endl;
 		for (uint8_t i = 0; i < 5; i++) {
 			if (i >= curr_lock) {
 				// TODO check if lock code is correct
@@ -250,42 +251,48 @@ void PlayMode::update(float elapsed) {
 	}
 	
 	else {
-		// check if lock is already solved TODO
-		// switch locks
-		if (k1.released) {
-			k1.released = false;
-			curr_lock = 0;
+		// reset locks on space key press
+		if (space.released) {
+			space.released = false;
+			reset_locks();
 		}
-		else if (k2.released) {
-			k2.released = false;
-			curr_lock = 1;
+		// check if lock is already solved
+		if (!lock_solved()) {
+			// switch locks
+			if (k1.released) {
+				k1.released = false;
+				curr_lock = 0;
+			}
+			else if (k2.released) {
+				k2.released = false;
+				curr_lock = 1;
+			}
+			else if (k3.released) {
+				k3.released = false;
+				curr_lock = 2;
+			}
+			else if (k4.released) {
+				k4.released = false;
+				curr_lock = 3;
+			}
+			else if (k5.released) {
+				k5.released = false;
+				curr_lock = 4;
+			}
+			// record moves and start rotation animation
+			if (arrowLeft.pressed) {
+				curr_rotation = glm::angleAxis(-one_tenth_rotation / 2, glm::vec3(1.0f, 0.0f, 0.0f));
+				left_turn(curr_lock);
+				lock_anim_iters = 20;
+			}
+			if (arrowRight.pressed) {
+				curr_rotation = glm::angleAxis(one_tenth_rotation / 2, glm::vec3(1.0f, 0.0f, 0.0f));
+				right_turn(curr_lock);
+				lock_anim_iters = 20;
+			}
 		}
-		else if (k3.released) {
-			k3.released = false;
-			curr_lock = 2;
-		}
-		else if (k4.released) {
-			k4.released = false;
-			curr_lock = 3;
-		}
-		else if (k5.released) {
-			k5.released = false;
-			curr_lock = 4;
-		}
-		// record moves and start rotation animation
-		if (arrowLeft.pressed) {
-			curr_rotation = glm::angleAxis(one_tenth_rotation / 2, glm::vec3(1.0f, 0.0f, 0.0f));
-			left_turn(curr_lock);
-			lock_anim_iters = 20;
-		}
-		if (arrowRight.pressed) {
-			curr_rotation = glm::angleAxis(-one_tenth_rotation / 2, glm::vec3(1.0f, 0.0f, 0.0f));
-			right_turn(curr_lock);
-			lock_anim_iters = 20;
-		}
+		
 	}
-
-
 
 	//move camera:
 	{
@@ -352,7 +359,7 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 
 	{ //use DrawLines to overlay some text:
 		glDisable(GL_DEPTH_TEST);
-		float aspect = float(drawable_size.x) / float(drawable_size.y);
+		float aspect = float(drawable_size.x) / float(drawable_size.y) * 1.3f;
 		DrawLines lines(glm::mat4(
 			1.0f / aspect, 0.0f, 0.0f, 0.0f,
 			0.0f, 1.0f, 0.0f, 0.0f,
@@ -361,12 +368,16 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 		));
 
 		constexpr float H = 0.09f;
-		lines.draw_text("Mouse motion rotates camera; WASD moves; escape ungrabs mouse",
+
+		std::string instructions = "Mouse rotates camera; WASD moves; esc ungrabs mouse; 1-5 changes locks; Arrow keys rotate locks; Space key resets combination";
+		std::string completion = "Congratulations! You have solved the locks! Press space to reset the combination.";
+		std::string str = lock_is_solved ? completion : instructions;
+		lines.draw_text(str,
 			glm::vec3(-aspect + 0.1f * H, -1.0 + 0.1f * H, 0.0),
 			glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f),
 			glm::u8vec4(0x00, 0x00, 0x00, 0x00));
 		float ofs = 2.0f / drawable_size.y;
-		lines.draw_text("Mouse motion rotates camera; WASD moves; escape ungrabs mouse",
+		lines.draw_text(str,
 			glm::vec3(-aspect + 0.1f * H + ofs, -1.0 + + 0.1f * H + ofs, 0.0),
 			glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f),
 			glm::u8vec4(0xff, 0xff, 0xff, 0x00));

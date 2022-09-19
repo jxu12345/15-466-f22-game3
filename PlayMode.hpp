@@ -9,7 +9,7 @@
 #include <deque>
 #include <random> // for std::mt19937
 #include <chrono> // for std::chrono
-
+#include <iostream>
 
 struct PlayMode : Mode {
 	PlayMode();
@@ -27,7 +27,7 @@ struct PlayMode : Mode {
 		uint8_t downs = 0;
 		uint8_t pressed = 0;
 		uint8_t released = 0;
-	} up, down, left, right, arrowLeft, arrowRight, k1, k2, k3, k4, k5;
+	} up, down, left, right, arrowLeft, arrowRight, k1, k2, k3, k4, k5, space;
 
 	// vector storing number keys
 	std::vector<Button> num_keys = std::vector<Button>(5);
@@ -43,6 +43,7 @@ struct PlayMode : Mode {
 	std::vector<uint8_t> lock_code = {0, 0, 0, 0, 0};
 	std::vector<uint8_t> current_code = {0, 0, 0, 0, 0};
 	uint8_t curr_lock = 0;
+	bool lock_is_solved = false;
 
 	// lock checking
 	bool lock_correct (uint8_t lock_num) {
@@ -52,9 +53,11 @@ struct PlayMode : Mode {
 	bool lock_solved () {
 		for (uint8_t i = 0; i < 5; i++) {
 			if (!lock_correct(i)) {
+				lock_is_solved = false;
 				return false;
 			}
 		}
+		lock_is_solved = true;
 		return true;
 	}
 
@@ -70,6 +73,7 @@ struct PlayMode : Mode {
 			assert(lock_code[i] < 10);
 			current_code[i] = 0;
 		}
+		std::cout << "Correct lock codes: " << std::to_string(lock_code[0]) << std::to_string(lock_code[1]) << std::to_string(lock_code[2]) << std::to_string(lock_code[3]) << std::to_string(lock_code[4]) << std::endl;
 	}
 
 	// turn lock clockwise and counterclockwise
@@ -98,8 +102,6 @@ struct PlayMode : Mode {
 	
 	//music coming from the tip of the leg (as a demonstration):
 	std::shared_ptr< Sound::PlayingSample > leg_tip_loop;
-
-	// lock turning and unlocking sounds
 	
 	//camera:
 	Scene::Camera *camera = nullptr;
