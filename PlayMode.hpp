@@ -77,7 +77,7 @@ struct PlayMode : Mode {
 	}
 
 	// turn lock clockwise and counterclockwise
-	void left_turn (uint8_t lock_num) { //counterclockwise, increment by 1
+	void right_turn (uint8_t lock_num) { //clockwise, increment by 1
 		// turn this lock and all next locks
 		for (int i = lock_num; i < 5; i++) {
 			if (current_code[i] == 9) {
@@ -88,7 +88,7 @@ struct PlayMode : Mode {
 		}
 	}
 
-	void right_turn (uint8_t lock_num) { //clockwise, decrement by 1
+	void left_turn (uint8_t lock_num) { //counterclockwise, decrement by 1
 		// turn this lock and all next locks
 		for (int i = lock_num; i < 5; i++) {
 			if (current_code[i] == 0) {
